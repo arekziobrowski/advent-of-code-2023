@@ -66,3 +66,26 @@ sum_list([], 0).
 sum_list([Head|Tail], Sum) :-
     sum_list(Tail, SumTail),
     Sum is Head + SumTail.
+
+% running part 2:
+% ?- read_file_lines('input.txt', Lines), process_game_strings(Lines), part2(Lines, Out).
+power_of_set(GameNumber, Power) :-
+    findall(R, color(GameNumber, red, R), RedList),
+    findall(B, color(GameNumber, blue, B), BlueList),
+    findall(G, color(GameNumber, green, G), GreenList),
+    max_list(RedList, MaxRed),
+    max_list(BlueList, MaxBlue),
+    max_list(GreenList, MaxGreen),
+    Power is MaxRed * MaxBlue * MaxGreen.
+
+process_game_set(0, 0).
+process_game_set(N, Sum) :-
+    N > 0,
+    N1 is N - 1,
+    process_game_set(N1, Sum1),
+    power_of_set(N, Power),
+    Sum is Sum1 + Power.
+
+part2(Lines, Out) :-
+    length(Lines, InLength),
+    process_game_set(InLength, Out).
