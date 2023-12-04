@@ -28,10 +28,10 @@ adjacent_symbols(Line, Column, AdjacentSymbols) :-
         AdjLine is Line+1, symbol(AdjSymbol, AdjLine, Column)
     ), Up),
     findall(AdjSymbol, (
-        AdjColumn is Column-1, symbol(AdjSymbol, Line, AdjColumn)
+        AdjColumn is Column-1, symbol(AdjSymbol, Line, AdjColumn), not(char_type(AdjSymbol, digit))
     ), Left),
     findall(AdjSymbol, (
-        AdjColumn is Column+1, symbol(AdjSymbol, Line, AdjColumn)
+        AdjColumn is Column+1, symbol(AdjSymbol, Line, AdjColumn), not(char_type(AdjSymbol, digit))
     ), Right),
     findall(AdjSymbol, (
         AdjColumn is Column-1, AdjLine is Line-1, symbol(AdjSymbol, AdjLine, AdjColumn)
@@ -50,7 +50,6 @@ adjacent_symbols(Line, Column, AdjacentSymbols) :-
 has_non_dot_adjacent(Line, Column) :-
     adjacent_symbols(Line, Column, AdjacentSymbols),
     dif(Char, '.'),
-    dif(Char, digit),
     member(Char, AdjacentSymbols).
 
 % running part 1:
@@ -64,30 +63,47 @@ part1(Out) :-
         char_type(Char, digit)
     ), 
     Set),
-    findall(Sum, (between(0, 139, Line), to_sum(Set, Line, Sum)), SumList),
-    sum_list(SumList, Out).
+    remove_duplicates(Set, Dedup),
+    sum_results(Dedup, 0, Out).
 
-to_sum(Set, Line, Sum) :-
-    findall(place(Column, Char), member(symbol(Char, Line, Column), Set), Result),
-    sort(Result, Sorted),
-    print(Sorted),
-    once(concatenate_consecutive_chars(Sorted, 0, [], Bag)),
-    maplist(atom_number, Bag, IntBag),
-    sum_list(IntBag, Sum).
+sum_results([], Result, Result).
+sum_results([symbol(_, Line, Col)|T], Acc, Result) :-
+    number_index_of(Line, Col, Number),
+    AccNew is Acc + Number,
+    sum_results(T, AccNew, Result). 
 
-concatenate_consecutive_chars([], _, Acc, Acc).
-concatenate_consecutive_chars([place(Num, Char) | T], PrevNum, Acc, Result) :-
-    (
-        succ(PrevNum, Num) ->
-            append_character_to_last(Acc, Char, NewAcc),
-            concatenate_consecutive_chars(T, Num, NewAcc, Result)
-        ;
-            append(Acc, [Char], NewAcc),
-            concatenate_consecutive_chars(T, Num, NewAcc, Result)
-    ).
+remove_duplicates(Facts, Result) :-
+    findall(Symbol, (
+        member(Symbol, Facts),
+        \+ (member(OtherSymbol, Facts), Symbol \== OtherSymbol,
+            Symbol = symbol(_, Line, Col1),
+            OtherSymbol = symbol(_, Line, Col2),
+            succ(Col1, Col2))
+    ), Result).
 
-append_character_to_last([], _, []).
-append_character_to_last([X], Char, [NewLast]) :-
-    atom_concat(X, Char, NewLast).
-append_character_to_last([Head|Tail], Char, [Head|NewTail]) :-
-    append_character_to_last(Tail, Char, NewTail).
+number_index_of(Row, Col, Out) :-
+    symbol(Char, Row, Col),
+    char_type(Char, digit),
+    once(all_left(Row, Col, [], Left)),
+    once(all_right(Row, Col, [], Right)),
+    reverse(Left, LeftReversed),
+    append(LeftReversed, [Char], Temp),
+    append(Temp, Right, OutList),
+    atomic_list_concat(OutList, Conc),
+    atom_number(Conc, Out).
+
+all_left(Row, Col, Acc, Result) :-
+    PrevCol is Col - 1,
+    char_type(Char, digit),
+    symbol(Char, Row, PrevCol),
+    append(Acc, [Char], NewAcc),
+    all_left(Row, PrevCol, NewAcc, Result).
+all_left(_, _, Acc, Acc).
+
+all_right(Row, Col, Acc, Result) :-
+    NextCol is Col + 1,
+    char_type(Char, digit),
+    symbol(Char, Row, NextCol),
+    append(Acc, [Char], NewAcc),
+    all_right(Row, NextCol, NewAcc, Result).
+all_right(_, _, Acc, Acc).
