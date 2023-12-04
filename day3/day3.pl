@@ -107,3 +107,52 @@ all_right(Row, Col, Acc, Result) :-
     append(Acc, [Char], NewAcc),
     all_right(Row, NextCol, NewAcc, Result).
 all_right(_, _, Acc, Acc).
+
+% running part 2:
+% ?- read_file_facts('input.txt'), part2(Out).
+part2(Out) :-
+    setof(symbol(Char, Line, Column), (
+        between(0, 139, Line),
+        between(0, 139, Column),
+        Char='*',
+        symbol(Char, Line, Column)
+    ), SuspectedGears),
+    findall(Ratio, (member(symbol(_, Y, Z), SuspectedGears), once(gear_ratio(Y, Z, Ratio))), Ratios),
+    sum_list(Ratios, Out).
+
+gear_ratio(Line, Column, Ratio) :-
+    adjacent_gear_symbols(Line, Column, AdjacentSymbols),
+    length(AdjacentSymbols, 2),
+    append([symbol(_, L1, C1)], [symbol(_, L2, C2)], AdjacentSymbols),
+    number_index_of(L1, C1, N1),
+    number_index_of(L2, C2, N2),
+    Ratio is N1 * N2.
+
+adjacent_gear_symbols(Line, Column, Out) :-
+    findall(symbol(AdjSymbol, AdjLine, Column), (
+        AdjLine is Line-1, char_type(AdjSymbol, digit),symbol(AdjSymbol, AdjLine, Column)
+    ), Down),
+    findall(symbol(AdjSymbol, AdjLine, Column), (
+        AdjLine is Line+1, char_type(AdjSymbol, digit), symbol(AdjSymbol, AdjLine, Column)
+    ), Up),
+    findall(symbol(AdjSymbol, Line, AdjColumn), (
+        AdjColumn is Column-1, char_type(AdjSymbol, digit), symbol(AdjSymbol, Line, AdjColumn)
+    ), Left),
+    findall(symbol(AdjSymbol, Line, AdjColumn), (
+        AdjColumn is Column+1, char_type(AdjSymbol, digit), symbol(AdjSymbol, Line, AdjColumn)
+    ), Right),
+    findall(symbol(AdjSymbol, AdjLine, AdjColumn), (
+        AdjColumn is Column-1, AdjLine is Line-1, char_type(AdjSymbol, digit),symbol(AdjSymbol, AdjLine, AdjColumn)
+    ), LeftBottom),
+    findall(symbol(AdjSymbol, AdjLine, AdjColumn), (
+        AdjColumn is Column-1, AdjLine is Line+1, char_type(AdjSymbol, digit), symbol(AdjSymbol, AdjLine, AdjColumn)
+    ), LeftUp),
+    findall(symbol(AdjSymbol, AdjLine, AdjColumn), (
+        AdjColumn is Column+1, AdjLine is Line-1, char_type(AdjSymbol, digit),symbol(AdjSymbol, AdjLine, AdjColumn)
+    ), RightBottom),
+    findall(symbol(AdjSymbol, AdjLine, AdjColumn), (
+        AdjColumn is Column+1, AdjLine is Line+1, char_type(AdjSymbol, digit), symbol(AdjSymbol, AdjLine, AdjColumn)
+    ), RightUp),
+    append([Down, Up, Left, Right, LeftBottom, LeftUp, RightBottom, RightUp], AdjacentSymbols),
+    remove_duplicates(AdjacentSymbols, Out),
+    !.
