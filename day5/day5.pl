@@ -1,5 +1,6 @@
 :- use_module(library(readutil)).
 :- dynamic(mapping/4).
+:- dynamic(seed/2).
 
 read_file_lines_and_assertz(File, Seeds) :-
     read_file_to_string(File, String, []),
@@ -53,19 +54,44 @@ part1(Seeds, Out) :-
     findall(Location, (member(Seed, Seeds), location(Seed, Location)), Bag),
     min_list(Bag, Out).
 
+% running part 2:
+% ?- read_file_lines_and_assertz('input.txt', Seeds), part2(Seeds, Out).
 
-location(Seed, Location) :-
-    map("sts", Seed, Soil),
-    map("stf", Soil, Fertilizer),
-    map("ftw", Fertilizer, Water),
-    map("wtl", Water, Light),
-    map("ltt", Light, Temperature),
-    map("tth", Temperature, Humidity),
-    map("htl", Humidity, Location),
+part2(Seeds, Out) :-
+    % LOOK OUT - BRUTE FORCE BELOW, BECAUSE I GOT TIRED OF PROLOG STUFF.
+    inflate_seed_facts(Seeds),
+    findall(Max, seed(_, Max), List),
+    max_list(List, MaxSearch),
+    print(MaxSearch),
+    lowest_location_for_seed(Out, MaxSearch).
+
+inflate_seed_facts([]).
+inflate_seed_facts([Start | [Range | T]]) :-
+    Max is Start + Range -1,
+    assertz(seed(Start, Max)),
+    inflate_seed_facts(T).
+
+lowest_location_for_seed(Location, Max) :-
+    between(0, Max, Location),
+    map_reversed("htl", Humidity, Location),
+    map_reversed("tth", Temperature, Humidity),
+    map_reversed("ltt", Light, Temperature),
+    map_reversed("wtl", Water, Light),
+    map_reversed("ftw", Fertilizer, Water),
+    map_reversed("stf", Soil, Fertilizer),
+    map_reversed("sts", Seed, Soil),
+    seed(StartSeed, MaxSeed),
+    between(StartSeed, MaxSeed, Seed),
     !.
 
 map(Name, Source, Destination) :-
     (
         mapping(Name, From, To, Step), Max is From + Step, between(From, Max, Source) -> Diff is To - From, Destination is Source + Diff ; Destination is Source
+    ),
+    !.
+
+map_reversed(Name, Source, Destination) :-
+    (
+        mapping(Name, From, To, Step), Max is To + Step, between(To, Max, Destination) -> Diff is To - From, Source is Destination - Diff ; Source is Destination
     ),
     !.
