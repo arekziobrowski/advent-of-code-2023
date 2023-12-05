@@ -1,7 +1,7 @@
 :- use_module(library(readutil)).
-:- dynamic(mapping/3).
+:- dynamic(mapping/4).
 
-read_file_lines_and_asserta(File, Seeds) :-
+read_file_lines_and_assertz(File, Seeds) :-
     read_file_to_string(File, String, []),
     string_lines(String, Lines),
     exclude(empty, Lines, NonEmptyLines),
@@ -17,13 +17,13 @@ read_file_lines_and_asserta(File, Seeds) :-
     between_elements("light-to-temperature map:", "temperature-to-humidity map:", Mappings, LightToTemperatureStrings),
     between_elements("temperature-to-humidity map:", "humidity-to-location map:", Mappings, TemperatureToHumidityStrings),
     between_elements("humidity-to-location map:", "end", Mappings, HumidityToLocationStrings),
-    asserta_list(SeedToSoilStrings, "sts"),
-    asserta_list(SoilToFertilizerStrings, "stf"),
-    asserta_list(FertilizerToWaterStrings, "ftw"),
-    asserta_list(WaterToLightStrings, "wtl"),
-    asserta_list(LightToTemperatureStrings, "ltt"),
-    asserta_list(TemperatureToHumidityStrings, "tth"),
-    asserta_list(HumidityToLocationStrings, "htl"),
+    assertz_list(SeedToSoilStrings, "sts"),
+    assertz_list(SoilToFertilizerStrings, "stf"),
+    assertz_list(FertilizerToWaterStrings, "ftw"),
+    assertz_list(WaterToLightStrings, "wtl"),
+    assertz_list(LightToTemperatureStrings, "ltt"),
+    assertz_list(TemperatureToHumidityStrings, "tth"),
+    assertz_list(HumidityToLocationStrings, "htl"),
     !.
 
 empty("").
@@ -34,22 +34,20 @@ between_elements(X, Y, List, Elements) :-
     reverse(ElementsReversed, Elements),
     !.
 
-asserta_list([], _).
-asserta_list([String|Rest], Name) :-
+assertz_list([], _).
+assertz_list([String|Rest], Name) :-
     atomic_list_concat(Atoms, ' ', String),
     maplist(atom_number, Atoms, [DestinationRange | [StartRange | [ Step | [] ] ] ]),
-    findall(_, asserta_name_fact(Name, DestinationRange, StartRange, Step), _),
-    asserta_list(Rest, Name).
+    assertz_name_fact(Name, DestinationRange, StartRange, Step),
+    assertz_list(Rest, Name).
 
 
-asserta_name_fact(Name, DR, SR, Step) :-
-    between(0, Step, Inc),
-    Destination is DR + Inc,
-    Start is SR + Inc,
-    asserta(mapping(Name, Start, Destination)).
+assertz_name_fact(Name, Destination, Start, Step) :-
+    assertz(mapping(Name, Start, Destination, Step)).
+
 
 % running part 1:
-% ?- read_file_lines_and_asserta('input.txt', Seeds), part1(Seeds, Out).
+% ?- read_file_lines_and_assertz('input.txt', Seeds), part1(Seeds, Out).
 
 part1(Seeds, Out) :-
     findall(Location, (member(Seed, Seeds), location(Seed, Location)), Bag),
@@ -57,19 +55,17 @@ part1(Seeds, Out) :-
 
 
 location(Seed, Location) :-
-    mapping("sts", Seed, Soil),
-    mapping("stf", Soil, Fertilizer),
-    mapping("ftw", Fertilizer, Water),
-    mapping("wtl", Water, Light),
-    mapping("ltt", Light, Temperature),
-    mapping("tth", Temperature, Humidity),
-    mapping("htl", Humidity, Location),
+    map("sts", Seed, Soil),
+    map("stf", Soil, Fertilizer),
+    map("ftw", Fertilizer, Water),
+    map("wtl", Water, Light),
+    map("ltt", Light, Temperature),
+    map("tth", Temperature, Humidity),
+    map("htl", Humidity, Location),
     !.
 
-mapping("sts", X, X).
-mapping("stf", X, X).
-mapping("ftw", X, X).
-mapping("wtl", X, X).
-mapping("ltt", X, X).
-mapping("tth", X, X).
-mapping("htl", X, X).
+map(Name, Source, Destination) :-
+    (
+        mapping(Name, From, To, Step), Max is From + Step, between(From, Max, Source) -> Diff is To - From, Destination is Source + Diff ; Destination is Source
+    ),
+    !.
