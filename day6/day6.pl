@@ -25,3 +25,12 @@ part1([[Time, Distance] | T], Acc, Out) :-
 
 distance(Time, HoldFactor, Distance) :-
     Distance is (Time - HoldFactor) * HoldFactor.
+
+% running part2:
+% ?- read_file_lines(File, Tuples), part2(Tuples, Out).
+
+part2([[Time, Distance]], Out) :-
+    R1 is floor(Time + sqrt(Time^2 - 4*(Distance+1))/2),
+    R2 is ceiling(Time - sqrt(Time^2 - 4*(Distance+1))/2),
+    Out is R1 - R2 + 1.
+
