@@ -45,8 +45,12 @@ map_hand_to_type(H, T) :-
     type(Occurences, T), !.
 
 stronger_card_order(<, H1, H2) :-
-    first_different_elem_strength(H1, H2, I1, I2),
-    I1 =< I2,
+    (
+        first_different_elem_strength(H1, H2, I1, I2) ->
+            I1 < I2
+        ;
+            true
+    ),
     !.
 
 stronger_card_order(>, H1, H2) :-
@@ -55,7 +59,7 @@ stronger_card_order(>, H1, H2) :-
     !.
 
 first_different_elem_strength(H1, H2, I1, I2) :-
-    Strength=['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'],
+    Strength=['*','2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'],
     atom_chars(H1, L1),
     atom_chars(H2, L2),
     first_different_elem(L1, L2, C1, C2),
@@ -83,10 +87,48 @@ count_char(Char, [Char | Rest], Acc, Count, Remaining) :-
 count_char(Char, [Other | Rest], Count, Count, [Other | Rest]) :-
     Char \= Other.
 
-type(Occurences, 'five_of_a_kind') :- length(Occurences, 1), member((_, 5), Occurences).
-type(Occurences, 'four_of_a_kind') :- length(Occurences, 2), member((_, 4), Occurences).
-type(Occurences, 'full_house') :- length(Occurences, 2), member((_, 3), Occurences), member((_, 2), Occurences).
-type(Occurences, 'three_of_a_kind') :- length(Occurences, 3), member((_, 3), Occurences).
-type(Occurences, 'two_pair') :- length(Occurences, 3), findall(X, member((X, 2), Occurences), L), length(L, 2).
-type(Occurences, 'one_pair') :- length(Occurences, 4), member((_, 2), Occurences).
-type(Occurences, 'high_card') :- length(Occurences, 5).
+type(Raw, 'five_of_a_kind') :- map_joker_occurrence(Raw, Occurences), length(Occurences, 1), member((_, 5), Occurences).
+type(Raw, 'four_of_a_kind') :- map_joker_occurrence(Raw, Occurences), length(Occurences, 2), member((_, 4), Occurences).
+type(Raw, 'full_house') :- map_joker_occurrence(Raw, Occurences), length(Occurences, 2), member((_, 3), Occurences), member((_, 2), Occurences).
+type(Raw, 'three_of_a_kind') :- map_joker_occurrence(Raw, Occurences), length(Occurences, 3), member((_, 3), Occurences).
+type(Raw, 'two_pair') :- map_joker_occurrence(Raw, Occurences),length(Occurences, 3), findall(X, member((X, 2), Occurences), L), length(L, 2).
+type(Raw, 'one_pair') :- map_joker_occurrence(Raw, Occurences),length(Occurences, 4), member((_, 2), Occurences).
+type(Raw, 'high_card') :- map_joker_occurrence(Raw, Occurences),length(Occurences, 5).
+
+% running part 2:
+% ?- read_file_lines('input.txt', Tuples), map_jokers(Tuples, NewTuples), part1(NewTuples, Out).
+
+map_jokers([], []).
+map_jokers([[H, Bid] | Ts], Out) :-
+    map_jokers(Ts, Temp),
+    re_replace('J'/g, '*', H, Mapped),
+    append([[Mapped, Bid]], Temp, Out).
+
+map_joker_occurrence(Occurences, Mapped) :-
+    (
+        member(('*', 5), Occurences) ->
+            Mapped=Occurences
+        ;
+             (
+                member(('*', NumJokers), Occurences) ->
+                    exclude(is_joker_occurence, Occurences, OccurencesNoJokers),
+                    % sort(1,  @>=, OccurencesNoJokers, [(NewChar, NumNewChar) | Sorted]),
+                    predsort(sort_occurences_desc, OccurencesNoJokers, [(NewChar, NumNewChar) | _]),
+                    BumpedNumber is NumNewChar + NumJokers,
+                    replace_element((NewChar, NumNewChar), (NewChar, BumpedNumber), OccurencesNoJokers, Mapped)
+                ;
+                    Mapped=Occurences
+            )
+    ),
+    !.
+
+sort_occurences_desc(<, (_, N1), (_, N2)) :- N1>N2.
+sort_occurences_desc(>, (_, N1), (_, N2)) :- N1=<N2.
+
+is_joker_occurence(('*', _)).
+
+replace_element(_, _, [], []).
+replace_element(OldElement, NewElement, [OldElement|Rest], [NewElement|Rest]).
+replace_element(OldElement, NewElement, [X|Rest], [X|UpdatedRest]) :-
+    X \= OldElement,
+    replace_element(OldElement, NewElement, Rest, UpdatedRest).
