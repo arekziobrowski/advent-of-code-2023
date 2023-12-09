@@ -16,6 +16,14 @@ part1(Numbers, Out) :-
     maplist(extrapolate, Numbers, Nexts),
     sum_list(Nexts, Out).
 
+% running part1:
+% ?- read_file_to_numbers('input.txt', Numbers), part2(Numbers, Out).
+
+part2(Numbers, Out) :- 
+    maplist(reverse, Numbers, Reversed),
+    maplist(extrapolate, Reversed, Nexts),
+    sum_list(Nexts, Out).
+
 extrapolate(L, Next) :- all_equal(L, 0), Next is 0, !.
 extrapolate(L, Next) :-
     differences(L, Differences),
