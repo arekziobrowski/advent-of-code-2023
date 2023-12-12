@@ -1,12 +1,11 @@
 :- use_module(library(readutil)).
+:- dynamic(vertex/3).
 
-read_file_to_graph_facts(File, StartRow, StartColumn) :-
+read_file_to_graph_facts(File) :-
     read_file_to_string(File, String, []),
     string_lines(String, Lines),
     maplist(string_chars, Lines, Chars),
-    chars_to_vertex_facts(Chars, 0),
-    vertex(StartRow, StartColumn, 'S'), % save starting indexes,
-    true. % replace 'S' with matching character.
+    chars_to_vertex_facts(Chars, 0).
 
 chars_to_vertex_facts([], _).
 chars_to_vertex_facts([Chars | Tail], Line) :-
@@ -16,8 +15,8 @@ chars_to_vertex_facts([Chars | Tail], Line) :-
     chars_to_vertex_facts(Tail, NewLine).
 
 % running part 1:
-% ?- read_file_to_graph_facts('input.txt', I, J), part1(Out).
-part1(Out) :-
+% ?- read_file_to_graph_facts('input.txt'), part1(Out, Loop).
+part1(Out, H) :-
     vertex(I, J, 'S'),
     findall(Path, (
         member(Replacement, ['-', '|', 'J', 'L', 'F', '7']),
@@ -28,6 +27,32 @@ part1(Out) :-
     length(H, Len),
     Out is Len / 2.
 
+% running part 1:
+% ?- read_file_to_graph_facts('input.txt'), part2(Out).
+part2(Out) :-
+    vertex(I, J, 'S'),
+    findall(Path, (
+        member(Replacement, ['-', '|', 'J', 'L', 'F', '7']),
+        retract(vertex(I, J, 'S')),
+        asserta(vertex(I, J, Replacement)),
+        (walk(I, J, I, J, [], Path) -> true ; asserta(vertex(I, J, 'S')), retract(vertex(I, J, Replacement)), fail)
+    ), [H|_]),
+    findall(BetweenNested, (between(0, 150, Row), findall(vertex(X, Y, Z), (X=Row, vertex(X, Y, Z)), Vertices), count_between(Vertices, H, 0, [], BetweenNested)), Bag),
+    flatten(Bag, Flat),
+    length(Flat, Out).
+
+count_between([], _, _, Out, Out).
+count_between([vertex(X, Y, C)|T], Loop, CountVertical, Acc, Out) :-
+    (
+        member(vertex(X, Y, C), Loop) -> 
+            (member(C, ['|', 'J', 'L']) -> NewCount is CountVertical + 1 ; NewCount is CountVertical),
+            NewAcc=Acc
+        ; 
+            NewCount is CountVertical,
+            (1 is NewCount mod 2 -> append([vertex(X, Y, C)], Acc, NewAcc) ; NewAcc=Acc)
+    ),
+    count_between(T, Loop, NewCount, NewAcc, Out).
+    
 walk(StartRow, StartCol, EndRow, EndCol, Acc, Path) :- 
     vertex(StartRow, StartCol, Char),
     append([vertex(StartRow, StartCol, Char)], Acc, NewAcc),
